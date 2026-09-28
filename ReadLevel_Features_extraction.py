@@ -36,6 +36,7 @@ from scipy.stats import mannwhitneyu
 from scipy.special import beta
 from subprocess import *
 from multiprocessing import Pool
+import traceback
 import subprocess
 import math
 from scipy.special import comb, perm
@@ -108,6 +109,12 @@ else:
 	bam_dir=bam_dir_tmp
 
 reference = Fasta(reference_fasta)
+
+def init_worker_reference():
+	# Each forked worker must own its file handle: an inherited handle shares one
+	# file offset across processes, so concurrent seek+read return another worker's bytes.
+	global reference
+	reference = Fasta(reference_fasta)
 reference_fai =reference_fasta+".fai"
 genome=reference_fai
 
@@ -826,8 +833,8 @@ def process_line(line):
 						subprocess.run("rm "+tmp2_localcram_filename+".crai", shell=True)
 					return name,','.join(str(x) for x in querypos_major[name])+",",  ','.join(str(x) for x in querypos_minor[name])+",",  ','.join(str(x) for x in leftpos_major[name])+",",  ','.join(str(x) for x in leftpos_minor[name])+",",  ','.join(str(x) for x in seqpos_major[name])+",",  ','.join(str(x) for x in seqpos_minor[name])+",",  ','.join(str(x) for x in mapq_major[name])+",",  ','.join(str(x) for x in mapq_minor[name])+",", ','.join(str(x) for x in baseq_major[name])+",",  ','.join(str(x) for x in baseq_minor[name])+",",  ','.join(str(x) for x in baseq_major_near1b[name])+",", ','.join(str(x) for x in baseq_minor_near1b[name])+",", major_plus[name],major_minus[name],minor_plus[name],minor_minus[name], str(context1[name]), str(context2[name]), context1_count[name],context2_count[name],','.join(str(x) for x in mismatches_major[name])+",",','.join(str(x) for x in mismatches_minor[name])+",", major_read1[name],major_read2[name],minor_read1[name],minor_read2[name],np.mean(dp_near[name]),np.mean(dp_far[name]),conflict_num[name], mappability[name], state,str(length),str(GCcontent),  str(major_softclippedreads/major_num), str(minor_softclippedreads/minor_num), "NA", "NA"
 				#print (fo)
-		except:
-			print ("not enough alt reads: ",chrom, start,end)
+		except Exception as e:
+			print ("site dropped: ",chrom, start,end, type(e).__name__, repr(e), traceback.format_exc().replace("\n", " | "), flush=True)
 	
 	
 	
@@ -835,7 +842,7 @@ def process_line(line):
 #pool.map(run_cmd,cmd_list1,1)
 	
 if __name__ == "__main__":
-	pool = Pool(processes=int(n_jobs))
+	pool = Pool(processes=int(n_jobs), initializer=init_worker_reference)
 	with open(input_pos) as source_file:
 	# chunk the work into batches of 4 lines at a time
 		#pool.map(process_line, source_file,1)
