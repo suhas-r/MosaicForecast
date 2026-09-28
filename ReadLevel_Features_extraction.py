@@ -33,7 +33,7 @@ import pysam
 import pysamstats
 import scipy.stats
 from scipy.stats import mannwhitneyu
-from scipy.special import beta
+from scipy.special import beta, betaln
 from subprocess import *
 from multiprocessing import Pool
 import traceback
@@ -880,10 +880,7 @@ def my_mosaic_likelihood(a,b,c,d,e,f):
 	baseq_minor=[float(i) for i in f.split(',')[:-1]]
 	r=sum([0.1**(float(i)/10) for i in baseq_major])
 	r=r+sum([1-0.1**(float(i)/10) for i in baseq_minor])
-	l=beta(r+1, depth-r+1)
-	if l >0:
-		l=math.log10(l)+math.log10(comb(depth,alt,exact=True))
-		l=10**l
+	l=betaln(r+1, depth-r+1)/math.log(10)+math.log10(comb(depth,alt,exact=True))
 ##	return(float(beta(r+1, depth-r+1)))
 	return(l)
 
@@ -891,7 +888,6 @@ def my_het_likelihood(a,b,c,d):
 	depth=sum([int(a),int(b),int(c),int(d)])
 	alt=sum([int(c),int(d)])
 	l=math.log10(comb(depth,alt,exact=True))+math.log10(0.5)*depth
-	l=10**l
 	return(l)
 #	math.log10(comb(2000,1000,exact=True))+math.log10(0.5)*2000
 #	return(0.5**depth)
@@ -906,7 +902,7 @@ def my_refhom_likelihod(a,b):
 	q=q+sum(math.log10(0.1**(i/10)) for i in baseq_minor)
 	l=math.log10(comb(depth,alt,exact=True))+q
 	#return(10**q)	
-	return(10**l)	
+	return(l)
 
 def my_althom_likelihod(a,b):
 	baseq_major=[float(i) for i in a.split(',')[:-1]]
@@ -917,7 +913,7 @@ def my_althom_likelihod(a,b):
 	q=sum(math.log10(1-0.1**(i/10)) for i in baseq_minor)
 	q=q+sum(math.log10(0.1**(i/10)) for i in baseq_major)
 	l=math.log10(comb(depth,alt,exact=True))+q
-	return(10**l)	
+	return(l)
 
 def my_wilcox_pvalue(a, b):
 	x1=[float(i) for i in a.split(',')[:-1]]
@@ -1016,6 +1012,12 @@ df['mosaic_likelihood']=df.apply(lambda row: my_mosaic_likelihood(row['major_plu
 df['het_likelihood']=df.apply(lambda row: my_het_likelihood(row['major_plus'], row['major_minus'], row['minor_plus'],row['minor_minus']), axis=1)
 df['refhom_likelihood']=df.apply(lambda row: my_refhom_likelihod(row['baseq_major'],row['baseq_minor']), axis=1)
 df['althom_likelihood']=df.apply(lambda row: my_althom_likelihod(row['baseq_major'],row['baseq_minor']), axis=1)
+# The four columns hold log10 likelihoods. Subtracting the per-row maximum before
+# exponentiating keeps every term in [0, 1], so nothing overflows or rounds to zero spuriously.
+likelihood_cols=['mosaic_likelihood','het_likelihood','refhom_likelihood','althom_likelihood']
+max_log_likelihood=df[likelihood_cols].max(axis=1)
+for col in likelihood_cols:
+	df[col]=10**(df[col]-max_log_likelihood)
 df['normalize']=df['mosaic_likelihood']+df['het_likelihood']+df['refhom_likelihood']+df['althom_likelihood']
 df['mosaic_likelihood']=df['mosaic_likelihood']/df['normalize']
 df['het_likelihood']=df['het_likelihood']/df['normalize']
