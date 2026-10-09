@@ -190,6 +190,16 @@ def process_line(line):
 			a=pysam.AlignmentFile(input_bam, "rb",reference_filename=reference_fasta)
 			read_length=int(subprocess.check_output("samtools view "+ input_bam+"|head -1000|awk '{print length($10)}'|sort|uniq -c|awk '{OFS=\"\\t\";print $1,$2}'|sort -k1,1nr|head -1|cut -f2",shell=True).decode('ascii'))
 			#print(read_length)
+		elif seq_file_format=="cram_direct":
+			# Reads the CRAM in place, like a BAM. The "cram" branch below pileups temporary
+			# per-site CRAM copies instead, which shifts dp_near/dp_far and so dp_diff.
+			input_cram=bam_dir+"/"+str(sample)+".cram"
+			if not os.path.exists(input_cram):
+				print("no sample.cram under the bam_dir")
+			if not os.path.exists(input_cram+".crai") and not os.path.exists(bam_dir+"/"+str(sample)+".crai"):
+				print("no cram index files under the bam_dir")
+			a=pysam.AlignmentFile(input_cram, "rc",reference_filename=reference_fasta)
+			read_length=int(subprocess.check_output("samtools view -T "+reference_fasta+" "+input_cram+"|head -1000|awk '{print length($10)}'|sort|uniq -c|awk '{OFS=\"\\t\";print $1,$2}'|sort -k1,1nr|head -1|cut -f2",shell=True).decode('ascii'))
 		elif seq_file_format=="cram":
 			input_cram=bam_dir+"/"+str(sample)+".cram"
 			crai_file=bam_dir+"/"+str(sample)+".crai"
