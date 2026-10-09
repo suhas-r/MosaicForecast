@@ -193,6 +193,8 @@ def process_line(line):
 		elif seq_file_format=="cram_direct":
 			# Reads the CRAM in place, like a BAM. The "cram" branch below pileups temporary
 			# per-site CRAM copies instead, which shifts dp_near/dp_far and so dp_diff.
+			# The handle is reopened before each pileup below: under htslib 1.9 only the first
+			# pileup on a CRAM handle returns reads.
 			input_cram=bam_dir+"/"+str(sample)+".cram"
 			if not os.path.exists(input_cram):
 				print("no sample.cram under the bam_dir")
@@ -262,6 +264,8 @@ def process_line(line):
 
 				if seq_file_format=="cram":
 					a=pysam.AlignmentFile(tmp1_localcram_filename, "rc",reference_filename=reference_fasta)
+				elif seq_file_format=="cram_direct":
+					a=pysam.AlignmentFile(input_cram, "rc",reference_filename=reference_fasta)
 				for rec in pysamstats.stat_variation(a, fafile=reference_fasta, min_mapq=0, min_baseq=0,chrom=chrom,start=pos-1,end=pos):
 					dp_allrec=0
 					if int(rec['pos'])+1==pos:
@@ -274,6 +278,8 @@ def process_line(line):
 
 				if seq_file_format=="cram":
 					a=pysam.AlignmentFile(tmp1_localcram_filename, "rc",reference_filename=reference_fasta)
+				elif seq_file_format=="cram_direct":
+					a=pysam.AlignmentFile(input_cram, "rc",reference_filename=reference_fasta)
 
 				for pileupcolumn in a.pileup(chrom, start, end, max_depth=8000):
 					for pileupread in pileupcolumn.pileups:
@@ -395,6 +401,8 @@ def process_line(line):
 						
 				if seq_file_format=="cram":
 					a=pysam.AlignmentFile(tmp2_localcram_filename, "rc",reference_filename=reference_fasta)
+				elif seq_file_format=="cram_direct":
+					a=pysam.AlignmentFile(input_cram, "rc",reference_filename=reference_fasta)
 				for pileupcolumn in a.pileup(str(chrom), max(0,int(start)-2000), min(int(end)+2000,int(chr_sizes[str(chr)])), max_depth=8000):
 					if pileupcolumn.pos==pos-2000:
 						dp_far[name].append(pileupcolumn.n)
@@ -461,6 +469,8 @@ def process_line(line):
 				if if_homopolymer=="No":			
 					if seq_file_format=="cram":
 						a=pysam.AlignmentFile(tmp1_localcram_filename, "rc",reference_filename=reference_fasta)
+					elif seq_file_format=="cram_direct":
+						a=pysam.AlignmentFile(input_cram, "rc",reference_filename=reference_fasta)
 					for pileupcolumn in a.pileup(chrom, start, end, max_depth=8000):
 						for pileupread in pileupcolumn.pileups:
 							try:
@@ -596,6 +606,8 @@ def process_line(line):
 					#print (baseq_major[name], baseq_minor[name])
 					if seq_file_format=="cram":
 						a=pysam.AlignmentFile(tmp2_localcram_filename, "rc",reference_filename=reference_fasta)
+					elif seq_file_format=="cram_direct":
+						a=pysam.AlignmentFile(input_cram, "rc",reference_filename=reference_fasta)
 					for pileupcolumn in a.pileup(str(chrom), max(0,int(start)-2000), min(int(end)+2000,int(chr_sizes[str(chr)])), max_depth=8000):
 						if pileupcolumn.pos==pos-2000:
 							dp_far[name].append(pileupcolumn.n)
@@ -664,6 +676,8 @@ def process_line(line):
 				if if_homopolymer=="No":		
 					if seq_file_format=="cram":
 						a=pysam.AlignmentFile(tmp1_localcram_filename, "rc",reference_filename=reference_fasta)
+					elif seq_file_format=="cram_direct":
+						a=pysam.AlignmentFile(input_cram, "rc",reference_filename=reference_fasta)
 					for pileupcolumn in a.pileup(chrom, start, end, max_depth=8000):
 						for pileupread in pileupcolumn.pileups:
 							try:
@@ -804,6 +818,8 @@ def process_line(line):
 							
 					if seq_file_format=="cram":
 						a=pysam.AlignmentFile(tmp2_localcram_filename, "rc",reference_filename=reference_fasta)
+					elif seq_file_format=="cram_direct":
+						a=pysam.AlignmentFile(input_cram, "rc",reference_filename=reference_fasta)
 					for pileupcolumn in a.pileup(str(chrom), max(0,int(start)-2000), min(int(end)+2000,int(chr_sizes[str(chr)])), max_depth=8000):
 						if pileupcolumn.pos==pos-2000:
 							dp_far[name].append(pileupcolumn.n)
