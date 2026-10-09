@@ -850,7 +850,8 @@ if __name__ == "__main__":
 		for atuple in result:
 			try:
 				print (' '.join(str(x) for x in atuple),file=fo)
-			except:
+			except Exception as e:
+				print ("row not written: ", type(e).__name__, repr(e), repr(atuple)[:200], flush=True)
 				continue
 
 
